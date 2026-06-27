@@ -34,6 +34,10 @@ class KalkulatorLayar extends StatefulWidget {
 class _KalkulatorLayarState extends State<KalkulatorLayar> {
   String userInput = '';
   String result = '0';
+  
+  // List untuk menyimpan riwayat perhitungan sebelumnya
+  final List<String> historyList = [];
+  final ScrollController _scrollController = ScrollController();
 
   final List<String> buttons = [
     'AC', '⌫', '%', '÷',
@@ -43,36 +47,75 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
     '00', '0', '.', '='
   ];
 
+  // Fungsi utilitas untuk otomatis scroll riwayat ke paling bawah
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Bagian Layar Hasil
+            // Bagian Layar Hasil & Riwayat (Flex 2.5 agar lebih luas untuk riwayat)
             Expanded(
-              flex: 2,
+              flex: 25,
               child: Container(
                 padding: const EdgeInsets.all(24),
-                alignment: Alignment.bottomRight,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // KANVAS RIWAYAT (Dibuat samar dan bisa di-scroll)
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: historyList.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              historyList[index],
+                              textAlign: TextAlign.end,
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                // Menggunakan warna putih dengan opasitas rendah agar tampak samar/tidak tegas
+                                color: Colors.white.withOpacity(0.25),
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    // INPUT YANG SEDANG BERJALAN
                     Text(
                       userInput,
                       style: GoogleFonts.poppins(
                         fontSize: 32,
-                        color: Colors.white54,
+                        color: Colors.white70, // Cukup tegas namun membedakan dengan hasil
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 5),
+                    
+                    // HASIL UTAMA
                     Text(
                       result,
                       style: GoogleFonts.poppins(
-                        fontSize: 64,
+                        fontSize: 56,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: Colors.white, // Paling tegas dan terang
                       ),
                       maxLines: 1,
                     ),
@@ -84,9 +127,9 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
             // Garis Pemisah Elegan
             const Divider(color: Colors.white12, thickness: 1),
 
-            // Bagian Tombol (Keypad)
+            // Bagian Tombol (Keypad) (Flex 4)
             Expanded(
-              flex: 4,
+              flex: 40,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: GridView.builder(
@@ -118,26 +161,24 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
     );
   }
 
-  // Logika Warna Teks
   Color _getTextColor(String text) {
-    if (text == 'AC' || text == '⌫') return const Color(0xFFFF6B6B); // Merah lembut
-    if (text == '=' || text == '÷' || text == '×' || text == '-' || text == '+') return Colors.white; // Putih untuk operator utama
-    if (text == '%') return const Color(0xFF4ECDC4); // Tosca
-    return Colors.white; // Angka
+    if (text == 'AC' || text == '⌫') return const Color(0xFFFF6B6B); 
+    if (text == '=' || text == '÷' || text == '×' || text == '-' || text == '+') return Colors.white; 
+    if (text == '%') return const Color(0xFF4ECDC4); 
+    return Colors.white; 
   }
 
-  // Logika Warna Background
   Color _getBgColor(String text) {
-    if (text == '=') return const Color(0xFF4ECDC4); // Tosca terang untuk Sama Dengan
-    if (text == '÷' || text == '×' || text == '-' || text == '+') return const Color(0xFF2C2F33); // Abu gelap untuk operator
-    return const Color(0xFF1E1E1E); // Hitam keabuan untuk angka
+    if (text == '=') return const Color(0xFF4ECDC4); 
+    if (text == '÷' || text == '×' || text == '-' || text == '+') return const Color(0xFF2C2F33); 
+    return const Color(0xFF1E1E1E); 
   }
 
-  // Logika Utama Kalkulator
   void _handleButtonTap(String text) {
     if (text == 'AC') {
       userInput = '';
       result = '0';
+      historyList.clear(); // Opsional: Menghapus history saat AC ditekan
       return;
     }
 
@@ -149,18 +190,19 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
     }
 
     if (text == '=') {
-      _calculateResult();
+      if (userInput.isNotEmpty) {
+        _calculateResult();
+      }
       return;
     }
 
-    // Mencegah input ganda pada operator
     if (userInput.isNotEmpty) {
       String lastChar = userInput[userInput.length - 1];
       bool isLastCharOperator = ['+', '-', '×', '÷', '%', '.'].contains(lastChar);
       bool isCurrentOperator = ['+', '-', '×', '÷', '%', '.'].contains(text);
 
       if (isLastCharOperator && isCurrentOperator) {
-        return; // Jangan tambahkan jika operator ditekan dua kali berturut-turut
+        return; 
       }
     }
 
@@ -169,7 +211,6 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
 
   void _calculateResult() {
     try {
-      // Mengubah simbol UI menjadi simbol yang bisa dibaca package math_expressions
       String finalInput = userInput
           .replaceAll('×', '*')
           .replaceAll('÷', '/');
@@ -179,19 +220,31 @@ class _KalkulatorLayarState extends State<KalkulatorLayar> {
       ContextModel cm = ContextModel();
       double eval = exp.evaluate(EvaluationType.REAL, cm);
 
-      // Membersihkan angka desimal .0 jika hasilnya bilangan bulat
+      String finalResult;
       if (eval % 1 == 0) {
-        result = eval.toInt().toString();
+        finalResult = eval.toInt().toString();
       } else {
-        result = eval.toString();
+        finalResult = eval.toString();
       }
+
+      // SIMPAN KE HISTORY SEBELUM MENGUBAH STATE UTAMA
+      // Format: "2 + 3 = 5"
+      String historyEntry = '$userInput = $finalResult';
+      historyList.add(historyEntry);
+
+      // Perbarui tampilan utama
+      result = finalResult;
+      userInput = ''; // Reset input agar user bisa langsung mengetik perhitungan baru
+      
+      // Gulir otomatis riwayat ke bawah agar yang terbaru selalu terlihat
+      _scrollToBottom();
+      
     } catch (e) {
       result = 'Error';
     }
   }
 }
 
-// Widget Custom untuk Tombol agar terlihat Premium
 class CustomButton extends StatelessWidget {
   final String text;
   final Color textColor;
@@ -213,7 +266,7 @@ class CustomButton extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(24), // Sudut membulat yang elegan
+          borderRadius: BorderRadius.circular(24), 
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
